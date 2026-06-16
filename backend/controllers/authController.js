@@ -18,7 +18,7 @@ export async function signup(req, res) {
       res.cookie('session', result.sessionToken, {
         httpOnly: true,
         secure: true,
-        sameSite: 'strict',
+        sameSite: 'none',
         maxAge: 7 * 24 * 60 * 60 * 1000,
         path: '/'
       });
@@ -42,7 +42,7 @@ export async function signin(req, res) {
     res.cookie('session', result.sessionToken, {
       httpOnly: true,
       secure: true,
-      sameSite: 'strict',
+      sameSite: 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: '/'
     });
