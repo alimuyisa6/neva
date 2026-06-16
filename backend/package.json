@@ -1,5 +1,4 @@
-// backend/package.json
-{
+ {
   "name": "cell2capsule-backend",
   "version": "1.0.0",
   "type": "module",
