@@ -1,5 +1,5 @@
  let csrfToken = null;
-const BASE = 'https://neva-2x8g.onrender.com';
+ const BASE = import.meta.env.VITE_API_URL || 'https://neva-2x8g.onrender.com';
 
 async function request(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...options.headers };
