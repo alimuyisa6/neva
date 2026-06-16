@@ -1,0 +1,20 @@
+// backend/routes/flashcards.js
+import { Router } from 'express';
+import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import * as flashcardController from '../controllers/flashcardController.js';
+const router = Router();
+router.get('/list', flashcardController.listFlashcards);
+router.get('/decks', flashcardController.getDecks);
+router.get('/deck', flashcardController.getDeck);
+router.get('/known', requireAuth, flashcardController.getKnown);
+router.get('/progress', requireAuth, flashcardController.getProgress);
+router.post('/create_deck', requireAdmin, flashcardController.createDeck);
+router.post('/update_deck', requireAdmin, flashcardController.updateDeck);
+router.post('/delete_deck', requireAdmin, flashcardController.deleteDeck);
+router.post('/add_cards', requireAdmin, flashcardController.addCards);
+router.post('/remove_card', requireAdmin, flashcardController.removeCard);
+router.post('/toggle_known', requireAuth, flashcardController.toggleKnown);
+router.post('/rate', requireAuth, flashcardController.rateCard);
+router.post('/check_answer', flashcardController.checkAnswer);
+router.post('/toggle_bookmark', requireAuth, flashcardController.toggleBookmark);
+export default router;
