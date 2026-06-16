@@ -19,23 +19,15 @@ export default function Login() {
 
   // Load Turnstile script + render widget
   useEffect(() => {
-    const loadScript = () => {
-      if (document.querySelector('script[src*="turnstile"]')) return;
-
+    if (!document.querySelector('script[src*="turnstile"]')) {
       const script = document.createElement('script');
       script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
       script.async = true;
       script.defer = true;
       document.head.appendChild(script);
-    };
-
-    loadScript();
-
-    let attempts = 0;
+    }
 
     const interval = setInterval(() => {
-      attempts++;
-
       if (
         window.turnstile &&
         turnstileRef.current &&
@@ -47,8 +39,6 @@ export default function Login() {
 
         clearInterval(interval);
       }
-
-      if (attempts > 50) clearInterval(interval);
     }, 100);
 
     return () => {
@@ -61,11 +51,13 @@ export default function Login() {
     };
   }, []);
 
-  const getTurnstileToken = () => {
+  // 🔥 SAFE TOKEN FETCH (NO widgetId dependency)
+  const getToken = () => {
     try {
       if (!window.turnstile) return null;
-      return window.turnstile.getResponse(widgetIdRef.current);
-    } catch (err) {
+      const token = window.turnstile.getResponse();
+      return token && token.length > 10 ? token : null;
+    } catch {
       return null;
     }
   };
@@ -74,10 +66,11 @@ export default function Login() {
     e.preventDefault();
     setError('');
 
-    const token = getTurnstileToken();
+    const token = getToken();
 
+    // ❌ BLOCK EMPTY TOKEN
     if (!token) {
-      setError('Please complete the security verification.');
+      setError('Please complete the security verification');
       return;
     }
 
@@ -89,12 +82,7 @@ export default function Login() {
       await refresh();
       navigate('/');
     } catch (err) {
-      const msg =
-        err?.message?.includes('Turnstile')
-          ? 'Security verification failed. Try again.'
-          : err?.message || 'Login failed';
-
-      setError(msg);
+      setError(err?.message || 'Login failed');
 
       // reset captcha on failure
       if (window.turnstile && widgetIdRef.current) {
@@ -137,7 +125,6 @@ export default function Login() {
               padding: '0.75rem',
               borderRadius: '8px',
               marginBottom: '1rem',
-              fontSize: '0.9rem',
             }}
           >
             {error}
@@ -151,8 +138,8 @@ export default function Login() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            style={{ width: '100%', marginBottom: '1rem' }}
             className="form-input"
+            style={{ width: '100%', marginBottom: '1rem' }}
           />
 
           <input
@@ -161,10 +148,11 @@ export default function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            style={{ width: '100%', marginBottom: '1rem' }}
             className="form-input"
+            style={{ width: '100%', marginBottom: '1rem' }}
           />
 
+          {/* Turnstile */}
           <div ref={turnstileRef} style={{ marginBottom: '1rem' }} />
 
           <button
@@ -173,8 +161,7 @@ export default function Login() {
             className="btn-primary"
             style={{
               width: '100%',
-              justifyContent: 'center',
-              opacity: loading ? 0.7 : 1,
+              opacity: loading ? 0.6 : 1,
             }}
           >
             {loading ? 'Signing in...' : 'Sign In'}
