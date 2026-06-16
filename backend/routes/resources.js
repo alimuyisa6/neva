@@ -1,0 +1,21 @@
+// backend/routes/resources.js
+import { Router } from 'express';
+import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import * as resourcesController from '../controllers/resourcesController.js';
+const router = Router();
+router.get('/get_resources', resourcesController.getResources);
+router.get('/get_filter_options', resourcesController.getFilterOptions);
+router.get('/get_pdfs_by_level', resourcesController.getPdfsByLevel);
+router.get('/get_notes_structure', resourcesController.getNotesStructure);
+router.get('/get_note_content', resourcesController.getNoteContent);
+router.get('/get_note_preview', resourcesController.getNotePreview);
+router.get('/get_note_reactions', resourcesController.getNoteReactions);
+router.get('/get_reading_progress', requireAuth, resourcesController.getReadingProgress);
+router.get('/get_continue_reading', requireAuth, resourcesController.getContinueReading);
+router.post('/submit_resource', requireAuth, resourcesController.submitResource);
+router.post('/approve', requireAdmin, resourcesController.approveResource);
+router.post('/track_pdf_preview', requireAuth, resourcesController.trackPdfPreview);
+router.post('/track_pdf_download', requireAuth, resourcesController.trackPdfDownload);
+router.post('/toggle_note_reaction', requireAuth, resourcesController.toggleNoteReaction);
+router.post('/save_reading_progress', requireAuth, resourcesController.saveReadingProgress);
+export default router;
