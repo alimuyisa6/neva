@@ -24,6 +24,9 @@ export async function getAllSiteSections() { return request('/api/sitesections/g
 export async function getSectionHeadings() { return request('/api/sitesections/get_section_headings'); }
 export async function updateSiteSection(section, data) { return request('/api/sitesections/update_site_section', { method: 'POST', body: JSON.stringify({ section, data }) }); }
 export async function updateSectionHeadings(headings) { return request('/api/sitesections/update_section_headings', { method: 'POST', body: JSON.stringify({ headings }) }); }
+export async function getLeaderboard() {
+  return request('/api/interactions/leaderboard');
+}
 
 export async function getResources(filters = {}) { const q = new URLSearchParams(filters).toString(); return request(`/api/resources/get_resources?${q}`); }
 export async function getFilterOptions() { return request('/api/resources/get_filter_options'); }
