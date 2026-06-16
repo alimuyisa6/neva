@@ -1,5 +1,5 @@
  let csrfToken = null;
-const API_BASE = '/api';
+const API_BASE = 'https://neva-2x8g.onrender.com';
 
 async function apiCall(endpoint, path, body = {}, method = 'POST') {
   const url = `${API_BASE}/${endpoint}?path=${path}`;
