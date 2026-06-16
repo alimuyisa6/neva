@@ -14,6 +14,7 @@ async function verifyTurnstile(token, ip) {
       body: formData
     });
     const outcome = await result.json();
+    console.log('Turnstile outcome:', JSON.stringify(outcome));
     return outcome.success === true;
   } catch {
     return false;
