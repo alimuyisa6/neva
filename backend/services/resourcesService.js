@@ -1,4 +1,4 @@
-// backend/services/resourcesService.js
+ // backend/services/resourcesService.js
 import { supabase } from '../utils/supabase.js';
 
 export async function getResources({ level, category, tag }) {
@@ -60,4 +60,91 @@ export async function getNoteReactions(note_id) {
 
 export async function getReadingProgress(userId, note_id) {
   if (!userId) return null;
-  const { data, error } = await supabase.from('user_interactions').select('value,
+  const { data, error } = await supabase.from('user_interactions').select('value, metadata, created_at').eq('user_id', userId).eq('interaction_type', 'reading_progress').filter('metadata->>note_id', 'eq', note_id).maybeSingle();
+  if (error) throw error;
+  if (data) return { scroll_percentage: data.value || 0, scroll_position: data.metadata?.scroll_position || 0, completed: data.metadata?.completed || false, last_accessed: data.created_at, time_spent: data.metadata?.time_spent || 0 };
+  return null;
+}
+
+export async function getContinueReading(userId, limit = 10) {
+  if (!userId) return [];
+  const { data, error } = await supabase.from('user_interactions').select('resource_id, value, metadata, created_at').eq('user_id', userId).eq('interaction_type', 'reading_progress').neq('value', 100).gt('value', 5).order('created_at', { ascending: false }).limit(limit);
+  if (error) throw error;
+  const notes = [];
+  for (const item of (data || [])) {
+    const { data: noteData } = await supabase.from('notes_structure').select('subtopic_name, topic, level').eq('subtopic_id', item.resource_id).maybeSingle();
+    if (noteData) notes.push({ note_id: item.resource_id, title: noteData.subtopic_name, topic: noteData.topic, level: noteData.level, progress_percentage: item.value, last_accessed: item.created_at });
+  }
+  return notes;
+}
+
+export async function submitResource(userId, payload) {
+  await supabase.from('resource_submissions').insert({
+    title: payload.title, description: payload.description, author: payload.author, level: payload.level, category: payload.category, tag: payload.tag,
+    section_type: payload.section_type, file_url: payload.file_url, file_size: payload.file_size, status: 'pending'
+  });
+  return { success: true };
+}
+
+export async function approveResource(submissionId, action) {
+  if (action === 'delete') {
+    await supabase.from('resource_submissions').delete().eq('id', submissionId);
+  } else if (action === 'approve') {
+    const { data: sub } = await supabase.from('resource_submissions').select('*').eq('id', submissionId).single();
+    if (sub) {
+      await supabase.from('biology_notes').insert({
+        title: sub.title, description: sub.description, author: sub.author, level: sub.level, category: sub.category, tag: sub.tag,
+        section_type: sub.section_type, file_url: sub.file_url, file_size: sub.file_size
+      });
+      await supabase.from('resource_submissions').update({ status: 'approved' }).eq('id', submissionId);
+    }
+  } else {
+    await supabase.from('resource_submissions').update({ status: 'rejected' }).eq('id', submissionId);
+  }
+  return { success: true };
+}
+
+export async function trackPdfPreview(userId, pdf_id) {
+  const { data: current } = await supabase.from('pdf_resources').select('preview_count').eq('id', pdf_id).single();
+  if (current) await supabase.from('pdf_resources').update({ preview_count: (current.preview_count || 0) + 1 }).eq('id', pdf_id);
+  await supabase.from('user_interactions').insert({ user_id: userId, interaction_type: 'view', resource_id: pdf_id, metadata: { pdf_id, action: 'preview' } });
+  return { success: true };
+}
+
+export async function trackPdfDownload(userId, pdf_id) {
+  const { data: current } = await supabase.from('pdf_resources').select('download_count').eq('id', pdf_id).single();
+  if (current) await supabase.from('pdf_resources').update({ download_count: (current.download_count || 0) + 1 }).eq('id', pdf_id);
+  await supabase.from('user_interactions').insert({ user_id: userId, interaction_type: 'download', resource_id: pdf_id, metadata: { pdf_id, action: 'download' } });
+  return { success: true };
+}
+
+export async function toggleNoteReaction(userId, note_id, reaction_type) {
+  const { data: existing } = await supabase.from('note_reactions').select('id, reaction_type').eq('user_id', userId).eq('note_id', note_id).maybeSingle();
+  if (existing) {
+    if (existing.reaction_type === reaction_type) await supabase.from('note_reactions').delete().eq('id', existing.id);
+    else await supabase.from('note_reactions').update({ reaction_type }).eq('id', existing.id);
+  } else {
+    await supabase.from('note_reactions').insert({ user_id: userId, note_id, reaction_type });
+  }
+  const { count } = await supabase.from('note_reactions').select('id', { count: 'exact', head: true }).eq('note_id', note_id);
+  return { success: true, count: count || 0 };
+}
+
+export async function saveReadingProgress(userId, { note_id, scroll_percentage, scroll_position, time_spent, completed }) {
+  const numericNoteId = parseInt(note_id, 10) || 0;
+  const { data: existing } = await supabase.from('user_interactions').select('id, metadata, value').eq('user_id', userId).eq('interaction_type', 'reading_progress').filter('metadata->>note_id', 'eq', note_id).maybeSingle();
+  if (existing) {
+    const currentTimeSpent = (existing.metadata?.time_spent || 0) + (time_spent || 0);
+    await supabase.from('user_interactions').update({
+      value: scroll_percentage,
+      metadata: { note_id, scroll_position: scroll_position || existing.metadata?.scroll_position || 0, time_spent: currentTimeSpent, completed: completed || false, last_updated: new Date().toISOString() },
+      created_at: new Date().toISOString()
+    }).eq('id', existing.id);
+  } else {
+    await supabase.from('user_interactions').insert({
+      user_id: userId, interaction_type: 'reading_progress', resource_id: numericNoteId, value: scroll_percentage,
+      metadata: { note_id, scroll_position: scroll_position || 0, time_spent: time_spent || 0, completed: completed || false, started_at: new Date().toISOString() }
+    });
+  }
+  return { success: true };
+}
